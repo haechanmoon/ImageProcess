@@ -62,6 +62,8 @@ public:
 	afx_msg void OnRegionPrewitt();
 	afx_msg void OnRegionRoberts();
 	afx_msg void OnRegionSobel();
+	afx_msg void OnRegionAverageFiltering();
+	afx_msg void OnRegionMedianFiltering();
 };
 
 #ifndef _DEBUG  // ImageProc2024_20201544_1View.cpp의 디버그 버전

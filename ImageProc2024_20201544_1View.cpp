@@ -46,6 +46,8 @@ ON_COMMAND(ID_REGION_EMBOSSING, &CImageProc2024202015441View::OnRegionEmbossing)
 ON_COMMAND(ID_REGION_PREWITT, &CImageProc2024202015441View::OnRegionPrewitt)
 ON_COMMAND(ID_REGION_ROBERTS, &CImageProc2024202015441View::OnRegionRoberts)
 ON_COMMAND(ID_REGION_SOBEL, &CImageProc2024202015441View::OnRegionSobel)
+ON_COMMAND(ID_REGION_AVERAGE_FILTERING, &CImageProc2024202015441View::OnRegionAverageFiltering)
+ON_COMMAND(ID_REGION_MEDIAN_FILTERING, &CImageProc2024202015441View::OnRegionMedianFiltering)
 END_MESSAGE_MAP()
 
 // CImageProc2024202015441View 생성/소멸
@@ -442,7 +444,8 @@ void CImageProc2024202015441View::OnRegionMeaning()
 void CImageProc2024202015441View::Convolve(unsigned char** InImg, unsigned char** ResImg, int cols, int rows, float mask[][3] , int bias, int depth)
 {
 	int x, y, i, j; //j  가 y 축이다!
-	int sum, rsum, gsum, bsum ;
+	int sum;	
+	int rsum, gsum, bsum;
 	// 0,0 부터 시작하면 오류가 날 수 있기 때문에 1,1부터 시작!!!
 	for (y = 1;y < rows - 1;y++)// row 열 collum 행!!!아 이거 맨날 헷갈려 ㅋㅋㅋ레전드 
 		for (x = 1;x < cols - 1;x++) {
@@ -677,4 +680,132 @@ void CImageProc2024202015441View::OnRegionSobel()//과제
 	free(Ec);
 	Invalidate();
 
+}
+
+
+void CImageProc2024202015441View::OnRegionAverageFiltering()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+	int x, y,i,j;
+	int sum,rsum,gsum,bsum;
+	// 5*5 영역의 평균값
+
+	for (y = 2;y < pDoc->ImageHeight-2;y++)
+		for (x = 2;x < pDoc->ImageWidth-2;x++) {
+			if (pDoc->depth == 1) {
+				sum = 0;
+				for (j = -2;j <= 2;j++)
+					for (i = -2;i <= 2;i++) {
+						sum += pDoc->InputImg[y + j][x + i];
+					}
+				sum /= 25;
+				if (sum > 255)
+					sum = 255;
+				else if (sum < 0)
+					sum = 0;
+				pDoc->ResultImg[y][x] = sum;
+			}
+			else {
+				rsum = 0; gsum = 0, bsum = 0;
+				for (j = -2;j <= 2;j++)
+					for (i = -2;i <= 2;i++) {
+						rsum += pDoc->InputImg[y + j][3 * (x + i) + 0];//x+i x+i가 좌표값!!!
+						gsum += pDoc->InputImg[y + j][3 * (x + i) + 1];
+						bsum += pDoc->InputImg[y + j][3 * (x + i) + 2];
+					}
+				rsum /= 25; gsum /= 25, bsum /= 25;
+				if (rsum > 255)
+					rsum = 255;				
+				else if (rsum < 0)
+					rsum = 0;
+
+				if (gsum > 255)
+					gsum = 255;
+				else if (gsum < 0)
+					gsum = 0;
+
+				if (bsum > 255)
+					bsum = 255;
+				else if (bsum < 0)
+					bsum = 0;
+				pDoc->ResultImg[y][3 * x + 0] = rsum;
+				pDoc->ResultImg[y][3 * x + 1] = gsum;
+				pDoc->ResultImg[y][3 * x + 2] = bsum;
+			}
+		}
+	Invalidate();
+}
+
+
+void CImageProc2024202015441View::OnRegionMedianFiltering()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+	int x, y, i, j;
+	int n[9];
+	int temp;
+	for (y = 1;y < pDoc->ImageHeight - 1;y++)
+		for (x = 1;x < pDoc->ImageWidth - 1;x++) {
+			for (j = -1;j <= 1;j++)
+				for (i = -1;i <= 1;i++) {
+					if (pDoc->depth == 1) {
+						//n[(j+1)*3+(i+1)] = pDoc->InputImg[y + j][x + i] 이것도 가능하다!!
+						n[0] = pDoc->InputImg[y - 1][x - 1];
+						n[1] = pDoc->InputImg[y - 1][x + 0];
+						n[2] = pDoc->InputImg[y - 1][x + 1];
+						n[3] = pDoc->InputImg[y - 0][x - 1];
+						n[4] = pDoc->InputImg[y - 0][x + 0];
+						n[5] = pDoc->InputImg[y - 0][x + 1];
+						n[6] = pDoc->InputImg[y + 1][x - 1];
+						n[7] = pDoc->InputImg[y + 1][x + 0];
+						n[8] = pDoc->InputImg[y + 1][x + 1];
+						//큰거가 8부터쌓이고 그다음 7에쌓이고....이런식으로!
+						//버블정렬=오름차순
+
+						for (i = 8;i > 0;i--)
+							for (j = 0;j < i;j++) {
+								if (n[j] > n[j + 1]) {
+									temp = n[j + 1];
+									n[j + 1] = n[j];
+									n[j] = temp;
+								}
+								pDoc->ResultImg[y][x] = n[4];
+							}
+					}
+					else {
+						n[0] = pDoc->InputImg[y - 1][3 * (x - 1) + 0];
+						n[1] = pDoc->InputImg[y - 1][3 * (x - 0) + 0];
+						n[2] = pDoc->InputImg[y - 1][3 * (x + 1) + 0];
+						n[3] = pDoc->InputImg[y - 0][3 * (x - 1) + 0];
+						n[4] = pDoc->InputImg[y - 0][3 * (x - 0) + 0];
+						n[5] = pDoc->InputImg[y - 0][3 * (x + 1) + 0];
+						n[6] = pDoc->InputImg[y + 1][3 * (x - 1) + 0];
+						n[7] = pDoc->InputImg[y + 1][3 * (x - 0) + 0];
+						n[8] = pDoc->InputImg[y + 1][3 * (x + 1) + 0];
+						pDoc->ResultImg[y][x * 3 + 0] = n[4];
+
+						n[0] = pDoc->InputImg[y - 1][3 * (x - 1) + 1];
+						n[1] = pDoc->InputImg[y - 1][3 * (x - 0) + 1];
+						n[2] = pDoc->InputImg[y - 1][3 * (x + 1) + 1];
+						n[3] = pDoc->InputImg[y - 0][3 * (x - 1) + 1];
+						n[4] = pDoc->InputImg[y - 0][3 * (x - 0) + 1];
+						n[5] = pDoc->InputImg[y - 0][3 * (x + 1) + 1];
+						n[6] = pDoc->InputImg[y + 1][3 * (x - 1) + 1];
+						n[7] = pDoc->InputImg[y + 1][3 * (x - 0) + 1];
+						n[8] = pDoc->InputImg[y + 1][3 * (x + 1) + 1];
+						pDoc->ResultImg[y][x * 3 + 1] = n[4];
+
+						n[0] = pDoc->InputImg[y - 1][3 * (x - 1) + 2];
+						n[1] = pDoc->InputImg[y - 1][3 * (x - 0) + 2];
+						n[2] = pDoc->InputImg[y - 1][3 * (x + 1) + 2];
+						n[3] = pDoc->InputImg[y - 0][3 * (x - 1) + 2];
+						n[4] = pDoc->InputImg[y - 0][3 * (x - 0) + 2];
+						n[5] = pDoc->InputImg[y - 0][3 * (x + 1) + 2];
+						n[6] = pDoc->InputImg[y + 1][3 * (x - 1) + 2];
+						n[7] = pDoc->InputImg[y + 1][3 * (x - 0) + 2];
+						n[8] = pDoc->InputImg[y + 1][3 * (x + 1) + 2];
+						pDoc->ResultImg[y][x * 3 + 2] = n[4];
+					}
+				}
+		}
+		Invalidate();
 }
