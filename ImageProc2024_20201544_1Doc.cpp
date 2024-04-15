@@ -316,15 +316,24 @@ void CImageProc2024202015441Doc::LoadImageFile(CArchive& ar)
 		BYTE nu[4];
 		int widthfile = (ImageWidth * 8 + 31) / 32 * 4;
 		for (i = 0;i < ImageHeight;i++) {
-			ar.Read(InputImg[ImageHeight-1-i], ImageWidth * depth); //bmp 파일은 뒤집어서 나오기 때문에 뒤집어주는 코드임!!
+			if(depth==1)
+				ar.Read(InputImg[ImageHeight-1-i], ImageWidth * depth); //bmp 파일은 뒤집어서 나오기 때문에 뒤집어주는 코드임!!
+			else {
+				for (int j = 0;j < ImageWidth;j++) {
+					BYTE r, g, b;
+					ar.Read(&b, 1); //처음에 읽은게 blue이므로 1바이트 여기에 저장한다!
+					ar.Read(&g, 1);
+					ar.Read(&r, 1);
+					InputImg[ImageHeight - 1 - i][3 * j + 0] = r;
+					InputImg[ImageHeight - 1 - i][3 * j + 1] = g;
+					InputImg[ImageHeight - 1 - i][3 * j + 2] = b;
+				}
+
+			}
 			if (widthfile - ImageWidth != 0)
 				ar.Read(nu, (widthfile - ImageWidth) * depth);
 		}
 	}
-
-
-
-
 	if (fp->GetLength() == 256 * 256)
 		ar.Read(InputImg, 256 * 256);
 
