@@ -235,6 +235,7 @@ void CImageProc2024202015441Doc::LoadImageFile(CArchive& ar)
 	char buf[256];
 	CFile* fp = ar.GetFile();
 	CString fname = fp->GetFilePath();
+	bool isbmp = false;
 
 	if (strcmp(strrchr(fname, '.'), ".ppm") == 0 || strcmp(strrchr(fname, '.'), ".PPM") == 0 ||
 		strcmp(strrchr(fname, '.'), ".pgm") == 0 || strcmp(strrchr(fname, '.'), ".PGM") == 0)
@@ -256,6 +257,30 @@ void CImageProc2024202015441Doc::LoadImageFile(CArchive& ar)
 		else depth = 3;
 		 
 
+	}
+
+	else if (strcmp(strrchr(fname, '.'), ".bmp") == 0 || strcmp(strrchr(fname, '.'), ".BMP") == 0)
+	{
+		//bmpmap file haeder 읽ㄱㅣ
+		BITMAPFILEHEADER bmfh;
+		ar.Read(&bmfh, sizeof(bmfh)); //bmfh읽는 주소값 파일을 읽을때 ar.read 를 쓴다!
+		//BMP 파일음을 나타내는 "BM" 마커가 있는지 확인
+		if(bmfh.bfType != (WORD)(('M'<<8)|'B')) //하위비트를 먼저 읽기 때문에 B를 나중에 쓴다!
+			return;
+
+		//bitmap info 읽기
+		BITMAPINFOHEADER bih;
+		ar.Read(&bih, sizeof(bih));
+		ImageHeight = bih.biHeight;
+		ImageWidth = bih.biWidth;
+		depth = bih.biBitCount / 8;
+
+		if (depth == 1) {
+			//palette 존재하는 경우
+			BYTE palette[256 * 4];
+			ar.Read(palette, 256 * 4);
+		}
+		isbmp = true;
 	}
 	else if (strcmp(strrchr(fname,'.'), ".raw") == 0|| strcmp(strrchr(fname,'.'),".RAW")==0)
 	{
@@ -283,10 +308,26 @@ void CImageProc2024202015441Doc::LoadImageFile(CArchive& ar)
 
 
 	//화일에서 데이터 읽기
-	for (i = 0;i < ImageHeight;i++)
-		ar.Read(InputImg[i], ImageWidth * depth);//가로줄 한번 읽어서 거기다 넣고 ...나눠서 따로따로 읽을 수 밖에 없음!
+	if (!isbmp) {
+		for (i = 0;i < ImageHeight;i++)
+			ar.Read(InputImg[i], ImageWidth * depth);
+	}//가로줄 한번 읽어서 거기다 넣고 ...나눠서 따로따로 읽을 수 밖에 없음!
+	else {
+		BYTE nu[4];
+		int widthfile = (ImageWidth * 8 + 31) / 32 * 4;
+		for (i = 0;i < ImageHeight;i++) {
+			ar.Read(InputImg[ImageHeight-1-i], ImageWidth * depth); //bmp 파일은 뒤집어서 나오기 때문에 뒤집어주는 코드임!!
+			if (widthfile - ImageWidth != 0)
+				ar.Read(nu, (widthfile - ImageWidth) * depth);
+		}
+	}
+
+
+
+
 	if (fp->GetLength() == 256 * 256)
 		ar.Read(InputImg, 256 * 256);
-	else
-		AfxMessageBox("256*256크기의 파일만 가능합니다.");
+
+	//else
+	//	AfxMessageBox("256*256크기의 파일만 가능합니다.");
 }
