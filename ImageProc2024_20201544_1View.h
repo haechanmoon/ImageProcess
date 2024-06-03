@@ -64,6 +64,29 @@ public:
 	afx_msg void OnRegionSobel();
 	afx_msg void OnRegionAverageFiltering();
 	afx_msg void OnRegionMedianFiltering();
+	afx_msg void OnMopologyColorGray();
+	afx_msg void OnMopologyBinarization();
+	afx_msg void OnMopologyErosion();
+	afx_msg void OnMopologyDialation();
+	afx_msg void OnGeometryZoominPixelCopy();
+	afx_msg void OnGeometryZoominInterpolation();
+	afx_msg void OnMopologyOpening();
+	void CopyResultToInput();
+	afx_msg void OnMopologyClosing();
+	afx_msg void OnGeometryZoomoutSubsampling();
+	afx_msg void OnGeometryZoomoutMeanSub();
+	afx_msg void OnGeometryZoomoutAvg();
+	afx_msg void OnGeometryRotate();
+	afx_msg void OnGeometryMirror();
+	afx_msg void OnGeometryFlip();
+	afx_msg void OnGeometryWarping();
+	afx_msg void OnGeometryMorphing();
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnAviView();
+	CString AVIFileName;
+	bool bAviMode;
+	void LoadAVIFile(CDC* pDC);
 };
 
 #ifndef _DEBUG  // ImageProc2024_20201544_1View.cpp의 디버그 버전

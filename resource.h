@@ -2,11 +2,14 @@
 // Microsoft Visual C++에서 생성한 포함 파일입니다.
 // ImageProc2024202015441.rc에서 사용되고 있습니다.
 //
+#define IDD_DIALOG_ANGLE                7
 #define IDD_ABOUTBOX                    100
 #define IDP_OLE_INIT_FAILED             100
 #define IDR_MAINFRAME                   128
 #define IDR_ImageProc2024202015441TYPE  130
 #define ID_WINDOW_MANAGER               131
+#define IDD_DIALOG1                     311
+#define IDC_EDIT_ANGLE_IN               1001
 #define ID_32771                        32771
 #define ID_MESSAGE                      32772
 #define ID_MESSAGE_PRINT                32773
@@ -44,14 +47,50 @@
 #define ID_REGION_AVERAGE_FILTERING     32805
 #define ID_32806                        32806
 #define ID_REGION_MEDIAN_FILTERING      32807
+#define ID_32808                        32808
+#define ID_MOPOLOGY_COLOR_GRAY          32809
+#define ID_32810                        32810
+#define ID_MOPOLOGY_BINARIZATION        32811
+#define ID_32812                        32812
+#define ID_MOPOLO                       32813
+#define ID_MOPOLOGY_EROSION             32814
+#define ID_32815                        32815
+#define ID_MOPOLOGY_DIALATION           32816
+#define ID_32817                        32817
+#define ID_GEOMETRY_ZOOMIN_PIXEL_COPY   32818
+#define ID_32819                        32819
+#define ID_GEOMETRY_ZOOMIN_INTERPOLATION 32820
+#define ID_32821                        32821
+#define ID_32822                        32822
+#define ID_MOPOLOGY_OPENING             32823
+#define ID_MOPOLOGY_CLOSING             32824
+#define ID_32825                        32825
+#define ID_32826                        32826
+#define ID_32827                        32827
+#define ID_32828                        32828
+#define ID_GEOMETRY_ROTATE              32829
+#define ID_GEOMETRY_ZOOMOUT_AVG         32830
+#define ID_GEOMETRY_ZOOMOUT_MEAN_SUB    32831
+#define ID_GEMOTRY_ZOOMOUT_SUBSAMPLING  32832
+#define ID_32833                        32833
+#define ID_GEOMETRY_MIRROR              32834
+#define ID_GEOMETRY_ZOOMOUT_SUBSAMPLING 32835
+#define ID_32836                        32836
+#define ID_GEOMETRY_FLIP                32837
+#define ID_32838                        32838
+#define ID_GEOMETRY_WARPING             32839
+#define ID_32840                        32840
+#define ID_GEOMETRY_MORPHING            32841
+#define ID_AVI32842                     32842
+#define ID_AVI_VIEW                     32843
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        311
-#define _APS_NEXT_COMMAND_VALUE         32808
-#define _APS_NEXT_CONTROL_VALUE         1000
+#define _APS_NEXT_RESOURCE_VALUE        314
+#define _APS_NEXT_COMMAND_VALUE         32844
+#define _APS_NEXT_CONTROL_VALUE         1002
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

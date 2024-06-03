@@ -51,6 +51,9 @@ public:
 	unsigned char **ResultImg;
 	int ImageWidth;
 	int ImageHeight;
+	int gImageWidth;
+	int gImageHeight;
+	unsigned char** gResultImg;
 	int depth;  //1==흑백, 3==컬러
 	void LoadSecondImageFile(CArchive& ar);
 	void LoadImageFile(CArchive& ar);

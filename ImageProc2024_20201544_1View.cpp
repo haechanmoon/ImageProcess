@@ -8,6 +8,9 @@
 // 해당 프로젝트와 문서 코드를 공유하도록 해 줍니다.
 #ifndef SHARED_HANDLERS
 #include "ImageProc2024_20201544_1.h"
+
+# include "CAngleInDialog.h"
+# include <Vfw.h>
 #endif
 
 #include "ImageProc2024_20201544_1Doc.h"
@@ -48,12 +51,33 @@ ON_COMMAND(ID_REGION_ROBERTS, &CImageProc2024202015441View::OnRegionRoberts)
 ON_COMMAND(ID_REGION_SOBEL, &CImageProc2024202015441View::OnRegionSobel)
 ON_COMMAND(ID_REGION_AVERAGE_FILTERING, &CImageProc2024202015441View::OnRegionAverageFiltering)
 ON_COMMAND(ID_REGION_MEDIAN_FILTERING, &CImageProc2024202015441View::OnRegionMedianFiltering)
+ON_COMMAND(ID_MOPOLOGY_COLOR_GRAY, &CImageProc2024202015441View::OnMopologyColorGray)
+ON_COMMAND(ID_MOPOLOGY_BINARIZATION, &CImageProc2024202015441View::OnMopologyBinarization)
+ON_COMMAND(ID_MOPOLOGY_EROSION, &CImageProc2024202015441View::OnMopologyErosion)
+ON_COMMAND(ID_MOPOLOGY_DIALATION, &CImageProc2024202015441View::OnMopologyDialation)
+ON_COMMAND(ID_GEOMETRY_ZOOMIN_PIXEL_COPY, &CImageProc2024202015441View::OnGeometryZoominPixelCopy)
+ON_COMMAND(ID_GEOMETRY_ZOOMIN_INTERPOLATION, &CImageProc2024202015441View::OnGeometryZoominInterpolation)
+ON_COMMAND(ID_MOPOLOGY_OPENING, &CImageProc2024202015441View::OnMopologyOpening)
+ON_COMMAND(ID_MOPOLOGY_CLOSING, &CImageProc2024202015441View::OnMopologyClosing)
+ON_COMMAND(ID_GEOMETRY_ZOOMOUT_SUBSAMPLING, &CImageProc2024202015441View::OnGeometryZoomoutSubsampling)
+ON_COMMAND(ID_GEOMETRY_ZOOMOUT_MEAN_SUB, &CImageProc2024202015441View::OnGeometryZoomoutMeanSub)
+ON_COMMAND(ID_GEOMETRY_ZOOMOUT_AVG, &CImageProc2024202015441View::OnGeometryZoomoutAvg)
+ON_COMMAND(ID_GEOMETRY_ROTATE, &CImageProc2024202015441View::OnGeometryRotate)
+ON_COMMAND(ID_GEOMETRY_MIRROR, &CImageProc2024202015441View::OnGeometryMirror)
+ON_COMMAND(ID_GEOMETRY_ZOOMOUT_SUBSAMPLING, &CImageProc2024202015441View::OnGeometryZoomoutSubsampling)
+ON_COMMAND(ID_GEOMETRY_FLIP, &CImageProc2024202015441View::OnGeometryFlip)
+ON_COMMAND(ID_GEOMETRY_WARPING, &CImageProc2024202015441View::OnGeometryWarping)
+ON_COMMAND(ID_GEOMETRY_MORPHING, &CImageProc2024202015441View::OnGeometryMorphing)
+ON_WM_LBUTTONDOWN()
+ON_WM_LBUTTONUP()
+ON_COMMAND(ID_AVI_VIEW, &CImageProc2024202015441View::OnAviView)
 END_MESSAGE_MAP()
 
 // CImageProc2024202015441View 생성/소멸
 
 CImageProc2024202015441View::CImageProc2024202015441View() noexcept
 {
+	bAviMode = false;
 	// TODO: 여기에 생성 코드를 추가합니다.
 
 }
@@ -79,6 +103,12 @@ void CImageProc2024202015441View::OnDraw(CDC* pDC)
 	if (!pDoc)
 		return;
 	int x, y;
+
+	if (bAviMode) {
+		LoadAVIFile(pDC);
+		bAviMode = false;
+		return;
+	}
 
 	if (pDoc->InputImg != NULL) {
 		if (pDoc->depth == 1) {
@@ -111,6 +141,22 @@ void CImageProc2024202015441View::OnDraw(CDC* pDC)
 		}
 	}
 
+	if (pDoc->gResultImg != NULL) {
+		if (pDoc->depth == 1) {
+			for (y = 0; y < pDoc->gImageHeight; y++)
+				for (x = 0; x < pDoc->gImageWidth; x++)
+					pDC->SetPixel(x, pDoc->ImageWidth + 20 + y,
+						RGB(pDoc->gResultImg[y][x], pDoc->gResultImg[y][x], pDoc->gResultImg[y][x]));
+		}
+		else {
+			for (y = 0; y < pDoc->gImageHeight; y++)
+				for (x = 0; x < pDoc->gImageWidth; x++)
+					pDC->SetPixel(x,pDoc->ImageWidth + 20 + y,
+						RGB(pDoc->gResultImg[y][3 * x + 0], pDoc->gResultImg[y][3 * x + 1], pDoc->gResultImg[y][3 * x + 2]));
+		}
+	}
+
+
 	if (pDoc->InputImg2 != NULL) {
 		if (pDoc->depth == 1) {
 			for (y = 0; y < pDoc->ImageHeight; y++)
@@ -120,8 +166,7 @@ void CImageProc2024202015441View::OnDraw(CDC* pDC)
 		else {
 			for (y = 0; y < pDoc->ImageHeight; y++)
 				for (x = 0; x < pDoc->ImageWidth; x++)
-					pDC->SetPixel((pDoc->ImageWidth + 20) * 2 + x, y, 
-						RGB(pDoc->InputImg2[y][3 * x + 0], pDoc->InputImg2[y][3 * x + 1], pDoc->InputImg2[y][3 * x + 2]));
+					pDC->SetPixel((pDoc->ImageWidth + 20) * 2 + x, y,RGB(pDoc->InputImg2[y][3 * x + 0], pDoc->InputImg2[y][3 * x + 1], pDoc->InputImg2[y][3 * x + 2]));
 		}
 	}
 }
@@ -808,4 +853,926 @@ void CImageProc2024202015441View::OnRegionMedianFiltering()
 				}
 		}
 		Invalidate();
+}
+
+void CImageProc2024202015441View::OnMopologyColorGray()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+	if (pDoc->depth == 1)
+		return;
+
+	int x, y;
+	int gray;
+
+	for (y = 0;y < pDoc->ImageHeight;y++)
+		for (x = 0;x < pDoc->ImageWidth * pDoc->depth;x++) {
+			gray = (pDoc->InputImg[y][3 * x + 0] + pDoc->InputImg[y][3 * x + 1] + pDoc->InputImg[y][3 * x + 2]) / 3;
+			pDoc->InputImg[y][3 * x + 0] = gray;
+			pDoc->InputImg[y][3 * x + 1] = gray;
+			pDoc->InputImg[y][3 * x + 2] = gray;
+		}
+	Invalidate();
+}
+
+
+void CImageProc2024202015441View::OnMopologyBinarization()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+	int x, y;
+	int threshold = 100;
+
+	for (y = 0;y < pDoc->ImageHeight;y++)
+		for (x = 0;x < pDoc->ImageWidth;x++) {
+			if (pDoc->depth == 1) {
+				if (pDoc->InputImg[y][x] >= threshold)
+					pDoc->InputImg[y][x] = 255;
+				else
+					pDoc->InputImg[y][x] = 0;
+			}
+			else {
+				if (pDoc->InputImg[y][3 * x + 0] >= threshold) {
+					pDoc->InputImg[y][3 * x + 0] = 255;
+					pDoc->InputImg[y][3 * x + 1] = 255;
+					pDoc->InputImg[y][3 * x + 2] = 255;
+				}
+				else {
+					pDoc->InputImg[y][3 * x + 0] = 0;
+					pDoc->InputImg[y][3 * x + 1] = 0;
+					pDoc->InputImg[y][3 * x + 2] = 0;
+				}
+			}
+		}
+	Invalidate();
+}
+
+
+void CImageProc2024202015441View::OnMopologyErosion()
+{
+
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+	int x, y, j, i;
+	int min, rmin, gmin, bmin;
+	for (y = 0; y < pDoc->ImageHeight; y++)
+		for (x = 0; x < pDoc->ImageWidth; x++) {
+			if (pDoc->depth == 1) {
+				min = 255;
+				for (j = -1; j <= 1; j++)
+					for (i = -1; i <= 1; i++) {
+						if (pDoc->InputImg[y + j][x + i] < min)
+							min = pDoc->InputImg[y + j][x + i];
+					}
+				pDoc->ResultImg[y][x] = min;
+			}
+			else {
+				rmin = 255; gmin = 255; bmin = 255;
+				for (j = -1; j <= 1; j++)
+					for (i = -1; i <= 1; i++) {
+						if (pDoc->InputImg[y + j][3*(x + i)] < rmin) rmin = pDoc->InputImg[y + j][3 * (x + i) + 0];
+						if (pDoc->InputImg[y + j][3*(x + i)] < gmin) gmin = pDoc->InputImg[y + j][3 * (x + i) + 1];
+						if (pDoc->InputImg[y + j][3*(x + i)] < bmin) bmin = pDoc->InputImg[y + j][3 * (x + i) + 2];
+					}
+			}
+		}
+	Invalidate();
+}
+
+
+void CImageProc2024202015441View::OnMopologyDialation()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+	int x, y, j, i;
+	int max,rmax,bmax,gmax;
+	for (y = 0; y < pDoc->ImageHeight; y++)
+		for (x = 0; x < pDoc->ImageWidth; x++) {
+			if (pDoc->depth == 1) {
+				max = 0;
+				for (j = -1; j <= 1; j++)
+					for (i = -1; i <= 1; i++) {
+						if (pDoc->InputImg[y + j][x + i] > max)
+							max = pDoc->InputImg[y + j][x + i];
+					}
+				pDoc->ResultImg[y][x] = max;
+			}
+			else {
+				rmax = 0; gmax = 0; bmax = 0;
+				for (j = -1; j <= 1; j++)
+					for (i = -1; i <= 1; i++) {
+						if (pDoc->InputImg[y + j][3 * (x + i)] > rmax) rmax = pDoc->InputImg[y + j][3 * (x + i) + 0];
+						if (pDoc->InputImg[y + j][3 * (x + i)] > gmax) gmax = pDoc->InputImg[y + j][3 * (x + i) + 1];
+						if (pDoc->InputImg[y + j][3 * (x + i)] > bmax) bmax = pDoc->InputImg[y + j][3 * (x + i) + 2];
+					}
+			}
+		}
+	Invalidate();
+}
+
+
+void CImageProc2024202015441View::OnGeometryZoominPixelCopy()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+	int scale_x = 3;
+	int scale_y = 2;
+	int i, j, x, y;
+	if (pDoc->gResultImg != NULL) {
+		for (i = 0; i < pDoc->gImageHeight; i++) {
+			free(pDoc->gResultImg[i]);
+		}
+		free(pDoc->gResultImg);
+		pDoc->gResultImg = NULL;
+	}
+
+	pDoc->gImageWidth = pDoc->ImageWidth * scale_x;
+	pDoc->gImageHeight = pDoc->ImageHeight * scale_y;
+
+	pDoc->gResultImg = (unsigned char**)malloc(pDoc->gImageHeight * sizeof(unsigned char*));
+	for (i = 0; i < pDoc->gImageHeight; i++)
+	{
+		pDoc->gResultImg[i] = (unsigned char*)malloc(pDoc->gImageWidth * pDoc->depth);
+	}
+
+	//전방향사상
+
+	/*for (y = 0; y < pDoc->ImageHeight; y++)
+	   for (x = 0; x < pDoc->ImageWidth; x++)
+	   {
+		  for(i=0; j<scale_y; j++)
+			 for(i = 0; i < scale_x; i ++)
+				  pDoc->gResultImg[y*scale_y+j][x*scale_x+i] = pDoc->Inputimg[y][x];
+	   }*/
+
+	   //역방향사상
+
+	for (y = 0; y < pDoc->gImageHeight; y++)
+		for (x = 0; x < pDoc->gImageWidth; x++)
+		{
+			if (pDoc->depth == 1)
+				pDoc->gResultImg[y][x] = pDoc->InputImg[y / scale_y][x / scale_x];
+			else
+			{
+				pDoc->gResultImg[y][3 * x + 0] = pDoc->InputImg[y / scale_y][3 * (x / scale_x) + 0];
+				pDoc->gResultImg[y][3 * x + 1] = pDoc->InputImg[y / scale_y][3 * (x / scale_x) + 1];
+				pDoc->gResultImg[y][3 * x + 2] = pDoc->InputImg[y / scale_y][3 * (x / scale_x) + 2];
+			}
+		}
+	Invalidate();
+}
+
+
+
+/*CAngleInDialog dig
+dlg.m_iAngle = angle;
+if (dlg.DoModal(); == IDCANCEL) return;
+angle = dlg.m_iAngle;*/
+
+//void CImageProc2024202015441View::OnGeometryZoominInterpolation()
+//{
+//	CImageProc2024202015441Doc* pDoc = GetDocument();
+//	
+//
+//
+//	int i, j, x, y;
+//	if (pDoc->gResultImg != NULL) {
+//			for (i = 0; i < pDoc->gImageHeight; i++) {
+//				free(pDoc->gResultImg[i]);
+//			}
+//		free(pDoc->gResultImg);
+//		pDoc->gResultImg = NULL;
+//	}
+//	//메모리 할당함 +1 로 메모리 할당함
+//
+//	pDoc->gImageWidth = pDoc->ImageWidth * scale_x;
+//	pDoc->gImageHeight = pDoc->ImageHeight * scale_y;
+//	
+//	pDoc->gResultImg = (unsigned char**)malloc(pDoc->gImageHeight * sizeof(unsigned char*));
+//	for (i = 0; i < pDoc->gImageHeight; i++)
+//	{
+//		pDoc->gResultImg[i] = (unsigned char*)malloc(pDoc->gImageWidth * pDoc->depth);
+//	}
+//	   //역방향사상
+//
+//	for (y = 0; y < pDoc->gImageHeight; y++)
+//		for (x = 0; x < pDoc->gImageWidth; x++)
+//		{
+//			src_x = x / scale_x;
+//			src_y = y / scale_y;
+//			alpha = src_x - (int)src_x;
+//			beta = src_y - (int)src_y;
+//			Ax = (int)src_x;
+//			Ay = (int)src_y;
+//			Bx = Ax + 1;
+//			By = Ay;
+//			Cx = Ax;
+//			Cy = Ay + 1;
+//			Dx = Ax + 1;
+//			Dy = Ay + 1;
+//
+//			if (Bx > pDoc->gImageWidth - 1)
+//				Bx = pDoc->gImageWidth - 1;
+//			if (Cy > pDoc->gImageHeight - 1)
+//				Cy = pDoc->gImageHeight- 1;
+//			if (Dx > pDoc->gImageWidth - 1)
+//				Dx = pDoc->gImageWidth - 1;
+//			if (Dy > pDoc->gImageHeight- 1)
+//				Dy = pDoc->gImageHeight - 1;
+//
+//			if (pDoc->depth == 1) {
+//				E = (1 - alpha) * pDoc->InputImg[Ay][Ax] + alpha * pDoc->InputImg[By][Bx];
+//				F = (1 - alpha) * pDoc->InputImg[Cy][Cx] + alpha * pDoc->InputImg[Dy][Dx];
+//				pDoc->gResultImg[y][x] = (1 - beta) * E + beta * F;
+//			}
+//			else
+//			{
+//				E = (1 - alpha) * pDoc->InputImg[Ay][3 * Ax + 0] + alpha * pDoc->InputImg[By][3 * Bx + 0];
+//				F = (1 - alpha) * pDoc->InputImg[Cy][3 * Cx + 0] + alpha * pDoc->InputImg[Dy][3 * Dx + 0];
+//				pDoc->gResultImg[y][3 * x + 0] = (1 - beta) * E + beta * F;
+//
+//				E = (1 - alpha) * pDoc->InputImg[Ay][3 * Ax + 1] + alpha * pDoc->InputImg[By][3 * Bx + 1];
+//				F = (1 - alpha) * pDoc->InputImg[Cy][3 * Cx + 1] + alpha * pDoc->InputImg[Dy][3 * Dx + 1];
+//				pDoc->gResultImg[y][3 * x + 1] = (1 - beta) * E + beta * F;
+//
+//				E = (1 - alpha) * pDoc->InputImg[Ay][3 * Ax + 1] + alpha * pDoc->InputImg[By][3 * Bx + 1];
+//				F = (1 - alpha) * pDoc->InputImg[Cy][3 * Cx + 1] + alpha * pDoc->InputImg[Dy][3 * Dx + 1];
+//				pDoc->gResultImg[y][3 * x + 1] = (1 - beta) * E + beta * F;
+//
+//				E = (1 - alpha) * pDoc->InputImg[Ay][3 * Ax + 2] + alpha * pDoc->InputImg[By][3 * Bx + 2];
+//				F = (1 - alpha) * pDoc->InputImg[Cy][3 * Cx + 2] + alpha * pDoc->InputImg[Dy][3 * Dx + 2];
+//				pDoc->gResultImg[y][3 * x + 2] = (1 - beta) * E + beta * F;
+//			}
+//		}
+//	Invalidate();
+//}
+
+
+void CImageProc2024202015441View::OnGeometryZoominInterpolation()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+	float scale_x = 1.7;
+	float scale_y = 1.2;
+	float src_x, src_y;
+	float alpha, beta;
+	int Ax, Ay, Bx, By, Cx, Cy, Dx, Dy;
+	int E, F;
+
+	int i, j, x, y;
+	if (pDoc->gResultImg != NULL) {
+		for (i = 0; i < pDoc->gImageHeight; i++) {
+			free(pDoc->gResultImg[i]);
+		}
+		free(pDoc->gResultImg);
+		pDoc->gResultImg = NULL;
+	}
+
+	pDoc->gImageWidth = pDoc->ImageWidth * scale_x;
+	pDoc->gImageHeight = pDoc->ImageHeight * scale_y;
+
+	pDoc->gResultImg = (unsigned char**)malloc(pDoc->gImageHeight * sizeof(unsigned char*));
+	for (i = 0; i < pDoc->gImageHeight; i++)
+	{
+		pDoc->gResultImg[i] = (unsigned char*)malloc(pDoc->gImageWidth * pDoc->depth);
+	}
+
+	for (y = 0; y < pDoc->gImageHeight; y++)
+	{
+		for (x = 0; x < pDoc->gImageWidth; x++)
+		{
+			src_x = x / scale_x;
+			src_y = y / scale_y;
+			alpha = src_x - (int)src_x;
+			beta = src_y - (int)src_y;
+			Ax = (int)src_x;
+			Ay = (int)src_y;
+			Bx = Ax + 1;
+			By = Ay;
+			Cx = Ax;
+			Cy = Ay + 1;
+			Dx = Ax + 1;
+			Dy = Ay + 1;
+
+			if (Bx > pDoc->gImageWidth - 1)
+				Bx = pDoc->gImageWidth - 1;
+			if (Cy > pDoc->gImageHeight - 1)
+				Cy = pDoc->gImageHeight - 1;
+			if (Dx > pDoc->gImageWidth - 1)
+				Dx = pDoc->gImageWidth - 1;
+			if (Dy > pDoc->gImageHeight - 1)
+				Dy = pDoc->gImageHeight - 1;
+
+			if (pDoc->depth == 1) {
+				E = (1 - alpha) * pDoc->InputImg[Ay][Ax] + alpha * pDoc->InputImg[By][Bx];
+				F = (1 - alpha) * pDoc->InputImg[Cy][Cx] + alpha * pDoc->InputImg[Dy][Dx];
+				pDoc->gResultImg[y][x] = (1 - beta) * E + beta * F;
+			}
+			else
+			{
+				for (j = 0; j < pDoc->depth; j++) { // 각 색상 채널에 대해 처리
+					E = (1 - alpha) * pDoc->InputImg[Ay][pDoc->depth * Ax + j] + alpha * pDoc->InputImg[By][pDoc->depth * Bx + j];
+					F = (1 - alpha) * pDoc->InputImg[Cy][pDoc->depth * Cx + j] + alpha * pDoc->InputImg[Dy][pDoc->depth * Dx + j];
+					pDoc->gResultImg[y][pDoc->depth * x + j] = (1 - beta) * E + beta * F;
+				}
+			}
+		}
+	}
+	Invalidate();
+}
+
+
+void CImageProc2024202015441View::OnMopologyOpening()
+{
+	OnMopologyErosion(); // 이부분 3번
+	CopyResultToInput();
+
+	OnMopologyErosion();
+	CopyResultToInput();
+
+	OnMopologyErosion();
+	CopyResultToInput();
+
+	OnMopologyDialation(); // <<이부분 3번
+	CopyResultToInput();
+	OnMopologyDialation();
+	CopyResultToInput();
+	OnMopologyDialation();
+	// TODO: 여기에 명령 처리기 코드를 추가합니다.
+}
+
+
+void CImageProc2024202015441View::CopyResultToInput()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+	int x, y;
+
+	for (y = 0; y < pDoc->ImageHeight; y++)
+		for (x = 0; x < pDoc->ImageWidth * pDoc->depth; x++)
+			pDoc->InputImg[y][x] = pDoc->ResultImg[y][x];
+}
+
+
+void CImageProc2024202015441View::OnMopologyClosing()
+{
+	OnMopologyDialation();
+	CopyResultToInput();
+	OnMopologyDialation();
+	CopyResultToInput();
+	OnMopologyDialation();
+	CopyResultToInput();
+	OnMopologyErosion();
+	CopyResultToInput();
+	OnMopologyErosion();
+	CopyResultToInput();
+	OnMopologyErosion();
+}
+
+
+
+void CImageProc2024202015441View::OnGeometryZoomoutSubsampling()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+
+
+	int scale_x = 3;		//1/3
+	int scale_y = 2;		//1/2
+
+	int i, j, x, y;
+
+	if (pDoc->gResultImg != NULL)
+	{
+		for (i = 0; i < pDoc->gImageHeight; i++)
+			free(pDoc->gResultImg[i]);
+		free(pDoc->gResultImg);
+		pDoc->gResultImg = NULL;
+	}
+
+	pDoc->gImageWidth = pDoc->ImageWidth / scale_x;
+	pDoc->gImageHeight = pDoc->ImageHeight / scale_y;
+	//메모리 할당
+	pDoc->gResultImg = (unsigned char**)malloc(pDoc->gImageHeight * sizeof(unsigned char*));
+	for (i = 0; i < pDoc->gImageHeight; i++)
+	{
+		pDoc->gResultImg[i] = (unsigned char*)malloc(pDoc->gImageWidth * pDoc->depth);
+	}
+
+	// 역방향사상
+	for (y = 0; y < pDoc->gImageHeight; y++)
+		for (x = 0; x < pDoc->gImageWidth; x++)
+		{
+			if (pDoc->depth == 1)
+				pDoc->gResultImg[y][x] = pDoc->InputImg[y * scale_y][x * scale_x];
+			else
+			{
+				pDoc->gResultImg[y][3 * x + 0] = pDoc->InputImg[y * scale_y][3 * (x * scale_x) + 0];
+				pDoc->gResultImg[y][3 * x + 1] = pDoc->InputImg[y * scale_y][3 * (x * scale_x) + 1];
+				pDoc->gResultImg[y][3 * x + 2] = pDoc->InputImg[y * scale_y][3 * (x * scale_x) + 2];
+			}
+		}
+	Invalidate();
+}
+
+
+void CImageProc2024202015441View::OnGeometryZoomoutMeanSub()
+{
+	OnRegionMeaning();
+	CopyResultToInput();
+	OnGeometryZoomoutSubsampling();
+}
+
+
+void CImageProc2024202015441View::OnGeometryZoomoutAvg()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+
+
+	int scale_x = 3;
+	int scale_y = 2;
+	int x, y, i, j;
+
+	int sum, gsum, bsum, rsum;
+	int src_x, src_y;
+
+	if (pDoc->gResultImg != NULL)
+	{
+		for (int i = 0; i < pDoc->gImageHeight; i++)
+			free(pDoc->gResultImg[i]);
+		free(pDoc->gResultImg);
+	}
+
+	pDoc->gImageWidth = pDoc->ImageWidth / scale_x + 1;
+	pDoc->gImageHeight = pDoc->ImageHeight / scale_y + 1;
+
+	pDoc->gResultImg = (unsigned char**)malloc(pDoc->gImageHeight * sizeof(unsigned char*));
+	for (i = 0; i < pDoc->gImageHeight; i++) {
+		pDoc->gResultImg[i] = (unsigned char*)malloc(pDoc->gImageWidth * pDoc->depth);
+
+
+	}
+
+	//정방향 사상
+	for (y = 0; y < pDoc->ImageHeight; y + scale_y)
+		for (x = 0; x < pDoc->ImageWidth; x += scale_x)
+		{
+			if (pDoc->depth == 1)
+			{
+				sum = 0;
+				for (j = 0; j < scale_y; j++)
+					for (i = 0; i = scale_x; i++)
+					{
+						src_x = x + i;
+						src_y = y + j;
+
+						if (src_x > pDoc->ImageWidth - 1)src_x = pDoc->ImageWidth - 1;
+						if (src_y > pDoc->ImageHeight - 1)src_y = pDoc->ImageHeight - 1;
+
+						sum += pDoc->InputImg[src_y][src_x];
+
+					}
+				pDoc->gResultImg[y / scale_x][x / scale_y] = sum / (scale_x * scale_y);
+			}
+
+
+			else {
+				rsum = 0; gsum = 0; bsum = 0;
+
+				for (j = 0; j < scale_y; j++)
+					for (i = 0; i = scale_x; i++)
+					{
+						src_x = x + i;
+						src_y = y + j;
+
+						if (src_x > pDoc->ImageWidth - 1)src_x = pDoc->ImageWidth - 1;
+						if (src_y > pDoc->ImageHeight - 1)src_y = pDoc->ImageHeight - 1;
+
+						sum += pDoc->InputImg[src_y][src_x];
+
+					}
+				pDoc->gResultImg[y / scale_x][3 * (x / scale_y) + 0] = rsum / (scale_x * scale_y);
+				pDoc->gResultImg[y / scale_x][3 * (x / scale_y) + 1] = gsum / (scale_x * scale_y);
+				pDoc->gResultImg[y / scale_x][3 * (x / scale_y) + 2] = bsum / (scale_x * scale_y);
+
+			}
+		}
+	Invalidate();
+}
+
+#define PI 3.1415926535
+void CImageProc2024202015441View::OnGeometryRotate()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+
+	int i, x, y;
+	int angle = 30;		//dgree
+	float radian;
+	int Cx, Cy, Oy;
+	int xdiff, ydiff;
+	int x_source, y_source;
+
+	CAngleInDialog dlg;
+	dlg.m_iAngle = angle;
+	if (dlg.DoModal() == IDCANCEL)		return;
+	angle = dlg.m_iAngle;
+
+	if (pDoc->gResultImg != NULL)
+	{
+		for (i = 0; i < pDoc->gImageHeight; i++)
+			free(pDoc->gResultImg[i]);
+		free(pDoc->gResultImg);
+		pDoc->gResultImg = NULL;
+	}
+	radian = 2 * PI / 360 * angle;
+	pDoc->gImageWidth = pDoc->ImageHeight * fabs(cos(PI / 2 - radian)) + pDoc->ImageWidth * fabs(cos(radian));
+	pDoc->gImageHeight = pDoc->ImageHeight * fabs(cos(radian)) + pDoc->ImageWidth * fabs(cos(PI / 2 - radian));
+	//메모리 할당
+	pDoc->gResultImg = (unsigned char**)malloc(pDoc->gImageHeight * sizeof(unsigned char*));
+	for (i = 0; i < pDoc->gImageHeight; i++)
+	{
+		pDoc->gResultImg[i] = (unsigned char*)malloc(pDoc->gImageWidth * pDoc->depth);
+	}
+
+	//중심점
+	Cx = pDoc->ImageWidth / 2;		Cy = pDoc->ImageHeight / 2;
+	//y의 마지막
+	Oy = pDoc->ImageHeight - 1;
+	xdiff = (pDoc->gImageWidth - pDoc->ImageWidth) / 2;
+	ydiff = (pDoc->gImageHeight - pDoc->ImageHeight) / 2;
+
+	//역방향사상
+	for (y = -ydiff;y < pDoc->gImageHeight - ydiff;y++)
+		for (x = -xdiff; x < pDoc->gImageWidth; x++)
+		{
+			x_source = ((Oy - y) - Cy) * sin(radian) + (x - Cx) * cos(radian) + Cx;
+			y_source = Oy - (((Oy - y) - Cy) * cos(radian) - (x - Cx) * sin(radian) + Cy);
+
+			if (pDoc->depth == 1)
+			{
+				if (x_source<0 || x_source>pDoc->ImageWidth - 1 ||
+					y_source<0 || y_source>pDoc->ImageHeight - 1)
+					pDoc->gResultImg[y + ydiff][x + xdiff] = 255;
+				else
+					pDoc->gResultImg[y + ydiff][x + xdiff] = pDoc->InputImg[y_source][x_source];
+			}
+			else
+			{
+				if (x_source<0 || x_source>pDoc->ImageWidth - 1 ||
+					y_source<0 || y_source>pDoc->ImageHeight - 1)
+				{
+					pDoc->gResultImg[y + ydiff][3 * (x + xdiff) + 0] = 255;
+					pDoc->gResultImg[y + ydiff][3 * (x + xdiff) + 1] = 255;
+					pDoc->gResultImg[y + ydiff][3 * (x + xdiff) + 2] = 255;
+				}
+				else
+				{
+					pDoc->gResultImg[y + ydiff][3 * (x + xdiff) + 0] = pDoc->InputImg[y_source][3 * x_source + 0];
+					pDoc->gResultImg[y + ydiff][3 * (x + xdiff) + 1] = pDoc->InputImg[y_source][3 * x_source + 1];
+					pDoc->gResultImg[y + ydiff][3 * (x + xdiff) + 2] = pDoc->InputImg[y_source][3 * x_source + 2];
+				}
+			}
+		}
+	Invalidate();
+}
+
+void CImageProc2024202015441View::OnGeometryMirror()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+
+	int x, y;
+	for(y=0;y<pDoc->ImageHeight;y++)
+		for (x = 0;x < pDoc->ImageWidth;x++)
+		{
+			if (pDoc->depth == 1)
+				pDoc->ResultImg[y][x] = pDoc->InputImg[y][pDoc->ImageWidth - 1 - x];
+			else
+			{
+				pDoc->ResultImg[y][3 * x + 0] = pDoc->InputImg[y][3 * (pDoc->ImageWidth - 1 - x) + 0];
+				pDoc->ResultImg[y][3 * x + 1] = pDoc->InputImg[y][3 * (pDoc->ImageWidth - 1 - x) + 1];
+				pDoc->ResultImg[y][3 * x + 2] = pDoc->InputImg[y][3 * (pDoc->ImageWidth - 1 - x) + 2];
+
+			}
+		}
+	Invalidate();
+}
+
+
+
+
+void CImageProc2024202015441View::OnGeometryFlip()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+
+	int x, y;
+	for (y = 0;y < pDoc->ImageHeight;y++)
+		for (x = 0;x < pDoc->ImageWidth*pDoc->depth;x++)
+		{
+			pDoc->ResultImg[pDoc->ImageHeight - 1 - y][x] = pDoc->InputImg[y][x];
+		}
+	Invalidate();
+}
+
+
+
+
+//void CImageProc2024202015441View::OnGeometryWarping()
+//{
+//	CImageProc2024202015441Doc* pDoc = GetDocument();
+//
+//	control_line source_lines[5] = { {100,100,150,150},
+//						 {0,0,pDoc->ImageWidth,0},
+//						 {pDoc->ImageWidth,0,pDoc->ImageWidth - 1,pDoc->ImageHeight - 1},
+//						 {pDoc->ImageWidth - 1,pDoc->ImageHeight - 1,0,pDoc->ImageHeight - 1},
+//						 {0,pDoc->ImageHeight - 1,0,0} };
+//
+//	control_line dest_lines[5] = { {100,100,200,200},
+//							 {0,0,pDoc->ImageWidth,0},
+//							 {pDoc->ImageWidth,0,pDoc->ImageWidth - 1,pDoc->ImageHeight - 1},
+//							 {pDoc->ImageWidth - 1,pDoc->ImageHeight - 1,0,pDoc->ImageHeight - 1},
+//							 {0,pDoc->ImageHeight - 1,0,0} };
+//	int x=0, y=0;
+//
+//	double u;
+//	double h;
+//	double d;
+//	double tx=0.0, ty=0.0;
+//	double xp, yp;
+//
+//	double weight;
+//	double totalweight=0.0;
+//	double a = 0.001;
+//	double b = 2.0;
+//	double p = 0.75;
+//
+//	int x1, x2, y1, y2;
+//	int src_x1, src_x2, src_y1, src_y2;
+//	double src_line_length, dest_line_length;
+//
+//	int num_lines = 5;
+//	int line;
+//	int source_x, source_y;
+//	int last_row, last_col;
+//
+//	last_col = pDoc->ImageWidth - 1;
+//	last_row = pDoc->ImageHeight - 1;
+//		for (line = 0; line < num_lines;line++) {
+//			x1 = dest_lines[line].Px;
+//			y1 = dest_lines[line].Py;
+//			x2 = dest_lines[line].Px;
+//			y2 = dest_lines[line].Px;
+//
+//			dest_line_length = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+//			u = (double)((x - x1) * (x2 - x1) + (y - y1) * (y2 - y1)) /
+//				(double)((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+//			h = (double)((y - y1) * (x2 - x1) - (x - x1) * (y2 - y1)) / dest_line_length;
+//
+//			if (u < 0)
+//				d = sqrt((x - x1)*(x-x1) + (y - y1)*(y-y1));
+//			else if (u > 1)
+//				d = sqrt((x - x2) * (x - x2) + (y - y2)*(y-y2));
+//			else
+//				d = fabs(h);
+//
+//			src_x1 = source_lines[line].Px;
+//			src_y1 = source_lines[line].Py;
+//			src_x2 = source_lines[line].Qx;
+//			src_y2 = source_lines[line].Qy;
+//
+//			src_line_length = sqrt((src_x2 - src_x1) ^ 2 + (src_y2 - src_y1) ^ 2);
+//
+//			xp = src_x1 + u * (src_x2 - src_x1) - h * (src_y2 - src_y1) / src_line_length;
+//			yp = src_x1 + u * (src_y2 - src_y1) + h * (src_x2 - src_x1) / src_line_length;
+//
+//			weight = pow(dest_line_length, p) / (a + d), b;
+//			tx += (xp - x) * weight;
+//			ty += (yp - y) * weight;
+//			totalweight += weight;
+//
+//		}
+//	source_x = x + (int)(tx / totalweight + 0.5);
+//	source_y = y + (int)(ty / totalweight + 0.5);
+//
+//	if (source_x < 0)
+//		source_x = 0;
+//	if (source_x > last_col)
+//		source_x = last_col;
+//	if (source_y < 0)
+//		source_y = 0;
+//	if (source_y > last_row)
+//		source_y = last_row;
+//
+//	pDoc->ResultImg[y][x] = pDoc->InputImg[source_y][source_x];
+//
+//
+//	Invalidate();
+//}
+
+typedef struct
+{
+	int Px, Py, Qx, Qy;
+} control_line;
+
+control_line mctrl_source = { 100,100,150,150 };
+control_line mctrl_dest = { 100,100,200,200 };
+
+void CImageProc2024202015441View::OnGeometryWarping()
+{
+	CImageProc2024202015441Doc* pDoc = GetDocument();
+
+	control_line source_lines[5] = {
+		{100, 100, 150, 150},
+		{0, 0, pDoc->ImageWidth, 0},
+		{pDoc->ImageWidth, 0, pDoc->ImageWidth - 1, pDoc->ImageHeight - 1},
+		{pDoc->ImageWidth - 1, pDoc->ImageHeight - 1, 0, pDoc->ImageHeight - 1},
+		{0, pDoc->ImageHeight - 1, 0, 0}
+	};
+
+	control_line dest_lines[5] = {
+		{100, 100, 200, 200},
+		{0, 0, pDoc->ImageWidth, 0},
+		{pDoc->ImageWidth, 0, pDoc->ImageWidth - 1, pDoc->ImageHeight - 1},
+		{pDoc->ImageWidth - 1, pDoc->ImageHeight - 1, 0, pDoc->ImageHeight - 1},
+		{0, pDoc->ImageHeight - 1, 0, 0}
+	};
+
+	source_lines[0] = mctrl_source;
+	dest_lines[0] = mctrl_dest;
+
+	double u, h, d, tx, ty, xp, yp, weight, totalweight;
+	double a = 0.001, b = 2.0, p = 0.75;
+	int x1, x2, y1, y2, src_x1, src_x2, src_y1, src_y2;
+	double src_line_length, dest_line_length;
+	int num_lines = 5, line, source_x, source_y;
+	int last_row = pDoc->ImageHeight - 1, last_col = pDoc->ImageWidth - 1;
+
+	for (int y = 0; y <= last_row; y++) {
+		for (int x = 0; x <= last_col; x++) {
+			tx = 0;
+			ty = 0;
+			totalweight = 0;
+
+			for (line = 0; line < num_lines; line++) {
+				x1 = dest_lines[line].Px;
+				y1 = dest_lines[line].Py;
+				x2 = dest_lines[line].Qx;
+				y2 = dest_lines[line].Qy;
+
+				dest_line_length = sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+				u = static_cast<double>(((x - x1) * (x2 - x1) + (y - y1) * (y2 - y1))) /
+					((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+				h = static_cast<double>(((y - y1) * (x2 - x1) - (x - x1) * (y2 - y1))) / dest_line_length;
+
+				if (u < 0)
+					d = sqrt((x - x1) * (x - x1) + (y - y1) * (y - y1));
+				else if (u > 1)
+					d = sqrt((x - x2) * (x - x2) + (y - y2) * (y - y2));
+				else
+					d = fabs(h);
+
+				src_x1 = source_lines[line].Px;
+				src_y1 = source_lines[line].Py;
+				src_x2 = source_lines[line].Qx;
+				src_y2 = source_lines[line].Qy;
+
+				src_line_length = sqrt((src_x2 - src_x1) * (src_x2 - src_x1) + (src_y2 - src_y1) * (src_y2 - src_y1));
+
+				xp = src_x1 + u * (src_x2 - src_x1) - h * (src_y2 - src_y1) / src_line_length;
+				yp = src_y1 + u * (src_y2 - src_y1) + h * (src_x2 - src_x1) / src_line_length;
+
+				weight = pow(dest_line_length, p) / pow(a + d, b);
+				tx += (xp - x) * weight;
+				ty += (yp - y) * weight;
+				totalweight += weight;
+			}
+
+			source_x = x + static_cast<int>(tx / totalweight + 0.5);
+			source_y = y + static_cast<int>(ty / totalweight + 0.5);
+
+			if (source_x < 0)
+				source_x = 0;
+			if (source_x > last_col)
+				source_x = last_col;
+			if (source_y < 0)
+				source_y = 0;
+			if (source_y > last_row)
+				source_y = last_row;
+
+			if(pDoc->depth==1)
+				pDoc->ResultImg[y][x] = pDoc->InputImg[source_y][source_x];
+			else {
+				pDoc->ResultImg[y][3 * x + 0] = pDoc->InputImg[source_y][3 * source_x + 0];
+				pDoc->ResultImg[y][3 * x + 1] = pDoc->InputImg[source_y][3 * source_x + 1];
+				pDoc->ResultImg[y][3 * x + 2] = pDoc->InputImg[source_y][3 * source_x + 2];
+			}
+		}
+	}
+
+	Invalidate();
+}
+
+
+
+void CImageProc2024202015441View::OnGeometryMorphing()
+{
+
+}
+
+CPoint mpos_st, mpos_end;
+void CImageProc2024202015441View::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	mpos_st = point;
+
+	CScrollView::OnLButtonDown(nFlags, point);
+}
+
+
+void CImageProc2024202015441View::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	mpos_end = point;
+	CDC* pDC = GetDC();
+	CPen rpen;
+	rpen.CreatePen(PS_SOLID, 0, RGB(255,0,0));
+	pDC->SelectObject(&rpen);
+	pDC->MoveTo(mpos_st);
+	pDC->LineTo(mpos_end);
+	ReleaseDC(pDC);
+
+	int Ax, Ay, Bx, By;
+	Ax = mpos_st.x;
+	Ay = mpos_st.y;
+	Bx = mpos_st.x;
+	By = mpos_end.y;
+
+	if (Ax < Bx)
+		 mctrl_source.Px = Ax - (Bx - Ax) / 2;
+	else
+		mctrl_source.Px = Ax - (Bx - Ax) / 2;
+	if (Ay < By)
+		mctrl_source.Py = Ay - (By - Ay) / 2;
+	else
+		mctrl_source.Py = Ay - (By - Ay) / 2;
+
+	mctrl_dest.Px = mctrl_source.Px;
+	mctrl_dest.Py = mctrl_source.Py;
+
+	mctrl_source.Qx = mpos_st.x;
+	mctrl_source.Qy = mpos_st.y;
+	mctrl_dest.Qx = mpos_end.x;
+	mctrl_dest.Qy = mpos_end.y;					
+	CScrollView::OnLButtonUp(nFlags, point);
+}
+
+
+void CImageProc2024202015441View::OnAviView()
+{
+	CFileDialog dlg(true,"", "", OFN_HIDEREADONLY| OFN_OVERWRITEPROMPT, "Avi File(*.avi)|*.avi|모든파일|*.*");
+	//true = 읽기용 false = 저장용 // 읽기 파일만 쓰겠다. OFNHideOnly
+
+	if (dlg.DoModal() == IDOK); {
+		AVIFileName = dlg.GetPathName();
+		bAviMode = true;
+		Invalidate();
+	}
+}
+
+
+void CImageProc2024202015441View::LoadAVIFile(CDC* pDC)
+{
+	PAVIFILE pavi; //포인터
+	AVIFILEINFO fi;
+	int stm;
+	PAVISTREAM pstm = NULL;
+	AVISTREAMINFO si;
+	PGETFRAME pfrm = NULL;
+	int frame;
+	LPBITMAPINFOHEADER pbmpih;
+	unsigned char* image;
+	int x, y;
+	
+	AVIFileInit();
+	AVIFileOpen(&pavi, AVIFileName, OF_READ | OF_SHARE_DENY_NONE, NULL);
+	AVIFileInfo(pavi, &fi, sizeof(AVIFILEINFO));
+
+	for (stm = 0;stm < fi.dwStreams;stm++) {
+		AVIFileGetStream(pavi, &pstm, 0, stm);
+		AVIStreamInfo(pstm, &si, sizeof(si));
+		if (si.fccType == streamtypeVIDEO) {
+			pfrm = AVIStreamGetFrameOpen(pstm, NULL);
+			for (frame = 0;frame < si.dwLength;frame++) { //si.dwLength
+				pbmpih = (LPBITMAPINFOHEADER)AVIStreamGetFrame(pfrm, frame);
+					if (!pbmpih)
+						continue;
+
+					image = (unsigned char*)((LPSTR)pbmpih + pbmpih->biSize);
+					/*for (y = 0;y<fi.dwHeight;y++)
+						for (x = 0;x < fi.dwWidth;x++) {
+							pDC->SetPixel(x, fi.dwHeight - 1 - y,
+								RGB(image[(y * fi.dwWidth + x) * 3 + 2],
+									image[(y * fi.dwWidth + x) * 3 + 1],
+									image[(y * fi.dwWidth + x) * 3 + 0]));
+						}*/
+					pDC->SetStretchBltMode(COLORONCOLOR);
+					::SetDIBitsToDevice(pDC->GetSafeHdc(), 0, 0, fi.dwWidth, fi.dwHeight,
+						0, 0, 0, fi.dwWidth, image, (BITMAPINFO*)pbmpih, DIB_RGB_COLORS);
+					Sleep(3);
+			}
+		}
+	}
+	AVIStreamGetFrameClose(pfrm);
+	AVIStreamRelease(pstm);
+	AVIFileRelease(pavi);
+	AVIStreamExit();
 }

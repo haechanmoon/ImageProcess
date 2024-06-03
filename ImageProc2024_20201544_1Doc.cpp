@@ -28,6 +28,7 @@ END_MESSAGE_MAP()
 
 
 // CImageProc2024202015441Doc 생성/소멸
+//////대부분 안되는건 여기때문인ㄷ가>>??
 
 CImageProc2024202015441Doc::CImageProc2024202015441Doc() noexcept
 {
@@ -35,7 +36,7 @@ CImageProc2024202015441Doc::CImageProc2024202015441Doc() noexcept
 	InputImg = NULL;
 	InputImg2 = NULL;
 	ResultImg = NULL;
-
+	gResultImg = NULL;
 }
 
 CImageProc2024202015441Doc::~CImageProc2024202015441Doc()
@@ -55,6 +56,11 @@ CImageProc2024202015441Doc::~CImageProc2024202015441Doc()
 		for (i = 0;i < ImageHeight;i++)
 			free(ResultImg[i]);
 		free(ResultImg);
+	}
+	if (gResultImg != NULL) {
+		for (i = 0;i < gImageHeight;i++)
+			free(gResultImg[i]);
+		free(gResultImg);
 	}
 
 }
@@ -166,6 +172,7 @@ void CImageProc2024202015441Doc::LoadSecondImageFile(CArchive& ar)
 	int maxValue, i;
 	char type[16];
 	char buf[256];
+	bool isbmp;
 	CFile* fp = ar.GetFile();
 	CString fname = fp->GetFilePath();
 
@@ -190,6 +197,29 @@ void CImageProc2024202015441Doc::LoadSecondImageFile(CArchive& ar)
 
 
 	}
+	else if (strcmp(strrchr(fname, '.'), ".bmp") == 0 || strcmp(strrchr(fname, '.'), ".BMP") == 0)
+	{
+		//bmpmap file haeder 읽기
+		BITMAPFILEHEADER bmfh;
+		ar.Read(&bmfh, sizeof(bmfh)); //bmfh읽는 주소값 파일을 읽을때 ar.read 를 쓴다!
+		//BMP 파일음을 나타내는 "BM" 마커가 있는지 확인
+		if (bmfh.bfType != (WORD)(('M' << 8) | 'B')) //하위비트를 먼저 읽기 때문에 B를 나중에 쓴다!
+			return;
+
+		//bitmap info 읽기
+		BITMAPINFOHEADER bih;
+		ar.Read(&bih, sizeof(bih));
+		h = bih.biHeight;
+		w = bih.biWidth;
+		d = bih.biBitCount / 8;
+
+		if (depth == 1) {
+			//palette 존재하는 경우
+			BYTE palette[256 * 4];
+			ar.Read(palette, 256 * 4);
+		}
+		isbmp = true;
+	}
 	else if (strcmp(strrchr(fname, '.'), ".raw") == 0 || strcmp(strrchr(fname, '.'), ".RAW") == 0)
 	{
 		if (fp->GetLength() != 256 * 256) {
@@ -202,30 +232,48 @@ void CImageProc2024202015441Doc::LoadSecondImageFile(CArchive& ar)
 		d = 1;
 	}//작은따음표 써야함 큰 따음표는 문자열
 
+
+
 	if (ImageHeight != h || ImageWidth != w || depth != d)
 		return;
 	//메모리 할당
-	InputImg = (unsigned char**)malloc(ImageHeight * sizeof(unsigned char*));
-	ResultImg = (unsigned char**)malloc(ImageHeight * sizeof(unsigned char*));//메모리가 세로방향의 주소값생성
-
-	for (i = 0;i < ImageHeight;i++) {
-		InputImg[i] = (unsigned char*)malloc(ImageWidth * depth);
-		ResultImg[i] = (unsigned char*)malloc(ImageWidth * depth);
+	InputImg2 = (unsigned char**)malloc(ImageHeight * sizeof(unsigned char*));
+	for (i = 0; i < ImageHeight; i++)
+	{
+		InputImg2[i] = (unsigned char*)malloc(ImageWidth * depth);
 	}
 
-
-
-
-
-	//화일에서 데이터 읽기
-	for (i = 0;i < ImageHeight;i++)
-		ar.Read(InputImg2[i], ImageWidth * depth);//가로줄 한번 읽어서 거기다 넣고 ...나눠서 따로따로 읽을 수 밖에 없음!
-	/*if (fp->GetLength() == 256 * 256)
-		ar.Read(InputImg2, 256 * 256);
+	//화일에서 데이타 읽기
+	if (!isbmp)
+	{
+		for (i = 0; i < ImageHeight; i++)
+			ar.Read(InputImg[i], ImageWidth * depth);
+	}
 	else
-		AfxMessageBox("256*256크기의 파일만 가능합니다.");*/
-}////뭘 복사해서 뭐 어떻게 하는거임 inputimg2이렇게 따로 써야함
+	{
+		BYTE nu[4];
+		int widthfile = (ImageWidth * 8 + 31) / 32 * 4;
+		for (i = 0; i < ImageHeight; i++)
+		{
+			if (depth == 1)
+				ar.Read(InputImg[ImageHeight - 1 - i], ImageWidth * depth);
+			else
+			{
+				for (int j = 0; j < ImageWidth; j++)
+				{
+					BYTE r, g, b;
+					ar.Read(&b, 1);		ar.Read(&g, 1);		ar.Read(&r, 1);
+					InputImg[ImageHeight - 1 - i][3 * j + 0] = r;
+					InputImg[ImageHeight - 1 - i][3 * j + 1] = g;
+					InputImg[ImageHeight - 1 - i][3 * j + 2] = b;
+				}
+			}
 
+			if (widthfile - ImageWidth != 0)
+				ar.Read(nu, (widthfile - ImageWidth) * depth);
+		}
+	}
+}
 
 void CImageProc2024202015441Doc::LoadImageFile(CArchive& ar)
 {
@@ -261,7 +309,7 @@ void CImageProc2024202015441Doc::LoadImageFile(CArchive& ar)
 
 	else if (strcmp(strrchr(fname, '.'), ".bmp") == 0 || strcmp(strrchr(fname, '.'), ".BMP") == 0)
 	{
-		//bmpmap file haeder 읽ㄱㅣ
+		//bmpmap file haeder 읽기
 		BITMAPFILEHEADER bmfh;
 		ar.Read(&bmfh, sizeof(bmfh)); //bmfh읽는 주소값 파일을 읽을때 ar.read 를 쓴다!
 		//BMP 파일음을 나타내는 "BM" 마커가 있는지 확인
